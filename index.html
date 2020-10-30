@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Profile Generator</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script type="text/javascript" src="jquery.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css">
+
+
+  <script src="stringify.js" charset="utf-8"></script>
+</head>
+
+<body>
+  <br>
+  <img class="logo" src="logo-dark.png" />
+  <h1>Profile Generation Demo</h1>
+  <h3>Example showing how Profiles are made</h3>
+  <hr>
+  <form action="">
+    <p>Search for Apps</p>
+    <input type="text" size="30" id="appTitle" name="artID" value="Reddit">
+    <select hidden id="media">
+      <option value="software" selected="selected">Software</option>
+
+    </select>
+    <input type="submit" class="button" value="Search">
+  </form>
+  <br>
+  <div hidden id="artistName"></div>
+  <div id="artwork"></div>
+  <div id="previewUrl"></div>
+  <div hidden id="artistViewUrl"></div>
+  <input type="text" size="30" placeholder="Bundle ID" id="bundleIdText">
+  <hr>
+  <p>Or type in Launch Scheme:</p>
+  <input type="text" size="30" placeholder="Launch Scheme" id="xLaunch">
+
+  <br>
+  <hr>
+  <input type="checkbox" onclick="checkBox()" id="customCheck" name="customCheck">
+  <label for="customCheck">Use a Custom PNG</label><br>
+  <br>
+  <div id="customImg">
+    <input type="file" d="img" name="img" onchange="previewFile()" accept="image/png"><br>
+    <img id="preview" src="" style="margin-top:10px;" class="main">
+  </div>
+  <br>
+  <hr>
+  <button class="button" onclick="generateProfiles()">Generate Profile</button>
+
+  <script type="text/javascript">
+
+    function checkBox() {
+      // If the checkbox is checked, show our section
+
+      if ($("#customCheck").is(":checked")) { $("#customImg").show() }
+      else { $("#customImg").hide() }
+    }
+
+    $("form").submit(function (e) {
+      e.preventDefault();
+      var title = $("#appTitle").val();
+      var media = $('#media').val();
+      var affname = "itunes";
+      var country = "";
+      getItems(title, affname, media, country);
+    });
+
+    // Let's get the bundleId based from the iTunes API
+    function getItems(q, affname, media, country) {
+      q = q.replace(/-/g, ' ');
+      $.ajax({
+        url: 'https://itunes.apple.com/' + country + '/search?',
+        data: {
+          term: q,
+          country: country,
+          media: media,
+          limit: 1
+        },
+        type: "GET",
+        dataType: "jsonp",
+        success: function (data, dataType) {
+
+          console.log(data);
+
+
+          var feedUrl = "";
+          var results = data.results;
+          var artistViewUrl = results[0]['artistViewUrl'];
+          var bundleIdText = results[0]['bundleId'];
+          var artistName = results[0]['artistName'];
+          var imgurl = results[0]['artworkUrl100'];
+          var previewUrl = results[0]['previewUrl'];
+
+          $('#artwork').html('');
+          $('#artistName').html('<div id="openwindow" data-url="' + bundleIdText + '">' + artistName + '</div>');
+          $('#artistViewUrl').text(artistViewUrl);
+          $('#bundleIdText').val(bundleIdText);
+          $('#previewURL').text(previewUrl);
+          getLaunchScheme(bundleIdText);
+
+          feedUrl = "";
+          if (media == "software")
+            var feedUrl = '<br><b>PODCAST RSS:</b> ' + results[0]['feedUrl'] + '</br>';
+
+          else {
+
+            if (typeof previewUrl === "undefined") {
+              $('#previewUrl audio, #previewUrl video').remove();
+              $('#previewUrl').html(feedUrl)
+            }
+            else {
+              $('#previewUrl').html('<audio controls><source src="' + previewUrl + '" type="audio/mpeg"></audio>');
+            }
+          }
+          $(new Image()).attr('src', '' + imgurl).addClass('main').appendTo($('#artwork'));
+        }
+      })
+    }
+
+    function getLaunchScheme(bundleId) {
+
+      // Load the launchscemes JSON and compare it against our bundleId
+      $.getJSON('./launchSchemes.json', function (obj) {
+        var schemes = obj[0];
+        var launchScheme = schemes[bundleId];
+        $('#xLaunch').val(launchScheme);
+      });
+    }
+
+    function generateProfiles() {
+
+      var launchScheme = $('#xLaunch').val();
+      if (launchScheme == '') { alert("Error: No launch scheme selected"); }
+      else {
+        var customIcon = $('#preview').attr('src');
+        console.log();
+        if (customIcon == '') {
+          // Actually not using the "Default" image because of a CORS Issue
+          //var iconData = getBase64Image($('.main')[0]);
+
+          // Dummy PNG instead
+          var iconData = "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"
+
+        }
+
+        else {
+          // Get the PNG from the Preview and clip the "data:image/png;base64, part
+          var iconData = $("#preview").attr("src").substring(22);
+        }
+        var textFile = null,
+          makeTextFile = function (text) {
+            var data = new Blob([text], { type: 'text/plain' });
+
+            // If we are replacing a previously generated file we need to
+            // manually revoke the object URL to avoid memory leaks.
+            if (textFile !== null) {
+              window.URL.revokeObjectURL(textFile);
+            }
+
+            textFile = window.URL.createObjectURL(data);
+
+            return textFile;
+          };
+
+
+        // Putting the mobileconfig file together from three parts
+
+        var firstPart = '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>PayloadContent</key><array>';
+        var lastPart = '</array><key>PayloadDescription</key><string>Adds your custom Icons</string><key>PayloadDisplayName</key><string>Custom Icons</string><key>PayloadIdentifier</key><string>f90d788a-5a01-4f16-9265-3039f5f51082</string><key>PayloadOrganization</key><string>ScreenStyler.com</string><key>PayloadRemovalDisallowed</key><false/><key>PayloadType</key><string>Configuration</string><key>PayloadUUID</key><string>f90d788a-5a01-4f16-9265-3039f5f51082</string><key>PayloadVersion</key><integer>1</integer></dict></plist>';
+        var middlePart = '<dict><key>FullScreen</key><true/><key>Icon</key><data>' + iconData + '</data><key>IsRemovable</key><true/><key>Label</key><string>Example</string><key>PayloadIdentifier</key><string>f90d788a-5a01-4f16-9265-3039f5f51082</string><key>PayloadType</key><string>com.apple.webClip.managed</string><key>PayloadUUID</key><string>f90d788a-5a01-4f16-9265-3039f5f51082</string><key>PayloadVersion</key><integer>1</integer><key>Precomposed</key><true/><key>URL</key><string>' + launchScheme + '</string></dict>';
+
+
+
+        var link = document.getElementById('downloadlink');
+        link.href = makeTextFile(firstPart + middlePart + lastPart);
+        link.style.display = 'block';
+      }
+
+    }
+
+
+    function previewFile() {
+      const preview = document.querySelector('#preview');
+      const file = document.querySelector('input[type=file]').files[0];
+      const reader = new FileReader();
+
+      reader.addEventListener("load", function () {
+        // convert image file to base64 string
+        preview.src = reader.result;
+      }, false);
+
+      if (file) {
+        reader.readAsDataURL(file);
+      }
+    }
+
+
+
+  </script>
+  <br>
+  <a download="Example.mobileconfig" id="downloadlink" style="display: none;margin-top:10px;">Download</a>
+</body>
+
+</html>
