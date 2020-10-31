@@ -32,3 +32,7 @@ Additionaly, there's a launch scheme JSON.
 
 I hope someone can help us expand the launch scheme :)
 Happy coding!
+
+## How to launch it
+
+Really just open index.html on localhost.
